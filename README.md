@@ -5,8 +5,8 @@ Scripts to configure Jetson AGX Thor (JetPack 7.1 / L4T 38.4) to run
 runtime for autonomous AI agents and the foundation of the NemoClaw stack.
 
 OpenShell runs a K3s Kubernetes cluster inside a single Docker container.
-The stock JetPack 7.1 configuration has four issues that prevent it from
-running correctly. These scripts fix all four.
+The stock JetPack 7.1 configuration has five issues that prevent it from
+running correctly. These scripts fix all five.
 
 ## Issues
 
@@ -62,12 +62,31 @@ without attempting IPv6 first. This workaround will become unnecessary
 once the OpenShell gateway image is updated to include explicit mirror
 entries for `docker.io` and `registry.k8s.io`.
 
+### 5. K3s cannot access cgroup v2 hierarchy inside gateway container
+
+JetPack 7.1 uses cgroup v2. By default, Docker runs containers in
+`private` cgroupns mode, which gives each container its own isolated
+cgroup namespace. K3s inside the OpenShell gateway container expects to
+read and write the host cgroup hierarchy directly (e.g.
+`/sys/fs/cgroup/kubepods/pids.max`). With a private cgroup namespace
+these paths don't exist inside the container, and K3s fails at startup
+with:
+
+```
+openat2 /sys/fs/cgroup/kubepods/pids.max: no such file or directory
+```
+
+**Fix:** Set `"default-cgroupns-mode": "host"` in `/etc/docker/daemon.json`.
+This makes all Docker containers (including the OpenShell gateway) use
+the host cgroup namespace by default, giving K3s the visibility into the
+cgroup hierarchy it requires.
+
 ## Scripts
 
 | Script | Purpose |
 |--------|---------|
 | `build-iptable-raw.sh` | Downloads JetPack 7.1 kernel sources and builds `iptable_raw.ko` |
-| `setup-openshell-network.sh` | Applies all four fixes and persists them across reboots |
+| `setup-openshell-network.sh` | Applies fixes 2–5 and persists them across reboots |
 | `restore-network-defaults.sh` | Reverses all changes and restores JetPack defaults |
 
 ## Usage
@@ -145,8 +164,15 @@ sudo reboot
   IPv6 in other Docker containers, consider the alternative fix of
   adding explicit mirror entries directly to the gateway container's
   `/etc/rancher/k3s/registries.yaml` after each gateway start.
+- Setting `default-cgroupns-mode: host` applies to all Docker
+  containers on the host, not just the OpenShell gateway. This is
+  the correct default for cgroup v2 systems running K3s or other
+  container-in-container workloads, but be aware if you have
+  containers that rely on cgroup namespace isolation.
 
-  ## Releases
-  ### March, 2026
-  * Initial Release
-  * Tested on NVIDIA AGX Thor Developer Kit
+## Releases
+
+### March, 2026
+* Initial Release
+* Tested on NVIDIA AGX Thor Developer Kit
+* Added fix #5: Docker cgroupns mode for cgroup v2 compatibility

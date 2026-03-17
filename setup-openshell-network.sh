@@ -4,6 +4,7 @@
 # - Switches iptables to legacy backend (required for K3s service routing)
 # - Loads br_netfilter (required for K3s flannel CNI pod networking)
 # - Disables IPv6 in Docker daemon (required for K3s containerd image pulls)
+# - Sets default-cgroupns-mode=host in Docker daemon (required for K3s cgroup v2 access)
 # - Persists all changes across reboots
 
 set -e
@@ -53,7 +54,7 @@ net.bridge.bridge-nf-call-iptables=1
 net.bridge.bridge-nf-call-ip6tables=1
 EOF
 
-echo "==> Disabling IPv6 in Docker daemon"
+echo "==> Configuring Docker daemon (IPv6 + cgroupns mode)"
 sudo python3 -c "
 import json
 config_path = '/etc/docker/daemon.json'
@@ -63,6 +64,7 @@ try:
 except FileNotFoundError:
     config = {}
 config['ipv6'] = False
+config['default-cgroupns-mode'] = 'host'
 with open(config_path, 'w') as f:
     json.dump(config, f, indent=4)
     f.write('\n')
@@ -76,6 +78,11 @@ sudo iptables -t raw -L > /dev/null && echo "raw table OK"
 sudo iptables -t nat -L DOCKER > /dev/null && echo "DOCKER chain OK"
 lsmod | grep -E "iptable_raw|br_netfilter"
 sysctl net.bridge.bridge-nf-call-iptables
-python3 -c "import json; c=json.load(open('/etc/docker/daemon.json')); print('Docker IPv6:', c.get('ipv6'))"
+python3 -c "
+import json
+c = json.load(open('/etc/docker/daemon.json'))
+print('Docker IPv6:', c.get('ipv6'))
+print('Docker cgroupns mode:', c.get('default-cgroupns-mode'))
+"
 
 echo "==> Done. Reboot recommended before starting OpenShell."

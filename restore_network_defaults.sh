@@ -36,7 +36,7 @@ echo "==> Removing persistence configs"
 sudo rm -f /etc/modules-load.d/openshell-k3s.conf
 sudo rm -f /etc/sysctl.d/99-openshell-k3s.conf
 
-echo "==> Restoring IPv6 in Docker daemon"
+echo "==> Restoring Docker daemon defaults (IPv6 + cgroupns mode)"
 sudo python3 -c "
 import json
 config_path = '/etc/docker/daemon.json'
@@ -46,6 +46,7 @@ try:
 except FileNotFoundError:
     config = {}
 config.pop('ipv6', None)
+config.pop('default-cgroupns-mode', None)
 with open(config_path, 'w') as f:
     json.dump(config, f, indent=4)
     f.write('\n')
@@ -63,6 +64,11 @@ echo "==> Verifying"
 sleep 1
 update-alternatives --display iptables | grep "currently points to"
 lsmod | grep -E "iptable_raw|br_netfilter" && echo "WARNING: modules still loaded" || echo "modules unloaded OK"
-python3 -c "import json; c=json.load(open('/etc/docker/daemon.json')); print('Docker IPv6:', c.get('ipv6', 'not set (default)'))"
+python3 -c "
+import json
+c = json.load(open('/etc/docker/daemon.json'))
+print('Docker IPv6:', c.get('ipv6', 'not set (default)'))
+print('Docker cgroupns mode:', c.get('default-cgroupns-mode', 'not set (default)'))
+"
 
 echo "==> Done. Reboot recommended to fully restore default state."
