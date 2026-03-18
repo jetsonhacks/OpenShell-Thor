@@ -103,7 +103,7 @@ sudo apt install -y \
 
 Install the OpenShell CLI:
 ```bash
-curl -LsSf https://raw.githubusercontent.com/NVIDIA/OpenShell/main/install.sh | sh
+uv tool install -U openshell
 ```
 
 The install script only installs the `openshell` CLI binary. The smoke
