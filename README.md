@@ -99,6 +99,23 @@ sudo apt install -y \
     build-essential bc bison flex libssl-dev libelf-dev
 ```
 
+### Step 0 — Install OpenShell
+
+Install the OpenShell CLI:
+```bash
+curl -LsSf https://raw.githubusercontent.com/NVIDIA/OpenShell/main/install.sh | sh
+```
+
+The install script only installs the `openshell` CLI binary. The smoke
+test in Step 3 uses an example that lives in the OpenShell repository
+itself, so clone it somewhere convenient:
+```bash
+git clone https://github.com/NVIDIA/OpenShell
+```
+
+Steps 1 and 2 use scripts from this repository (`openshell-thor`), not
+from the OpenShell clone.
+
 ### Step 1 — Build the kernel module
 ```bash
 ./build-iptable-raw.sh
@@ -127,8 +144,10 @@ session state.
 
 ### Step 3 — Run OpenShell
 
-After rebooting, OpenShell should work with the standard workflow:
+After rebooting, OpenShell should work. Run the smoke test from inside
+the OpenShell repository cloned in Step 0:
 ```bash
+cd OpenShell
 bash examples/sandbox-policy-quickstart/demo.sh
 ```
 
